@@ -1,7 +1,9 @@
 # AI-Stock-Price-Predictor-with-Sentiment-Analysis
 Predict stock prices using historical data and real-time news sentiment — all in a clean Streamlit dashboard.
 <br>
+
 🔍 Overview
+<br>
 <b> This project combines:</b>
 <br>
 📉 Historical stock prices via yfinance
