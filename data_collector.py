@@ -3,38 +3,41 @@
 import yfinance as yf
 import requests
 from bs4 import BeautifulSoup
-import datetime
+import pandas as pd
 
+# ✅ Fetch historical stock price data
 def fetch_stock_data(ticker, start_date, end_date):
     data = yf.download(ticker, start=start_date, end=end_date)
-    return data
+    
+    # Handle single vs multi-index for consistent behavior
+    if isinstance(data.columns, pd.MultiIndex):
+        return data
+    else:
+        data.columns = pd.MultiIndex.from_product([data.columns, [ticker]])
+        return data
 
+# ✅ Fetch news headlines from Yahoo Finance
 def fetch_news(ticker):
-    url = f'https://finviz.com/quote.ashx?t={ticker}'
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
-
-    soup = BeautifulSoup(response.text, 'html.parser')
-    news_table = soup.find('table', class_='fullview-news-outer')
-
+    url = f"https://finance.yahoo.com/quote/{ticker}?p={ticker}"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    # Yahoo Finance doesn't always use a table — safer to look for <li> or <a> tags inside news section
     headlines = []
-    for row in news_table.findAll('tr'):
-        headline = row.a.text
-        headlines.append(headline)
+    
+    # Try to find news headlines safely
+    news_section = soup.find('section')
+    if news_section:
+        for link in news_section.find_all('a'):
+            text = link.get_text(strip=True)
+            if text:
+                headlines.append(text)
+    
+    # If section not found, fallback to simple a-tags
+    if not headlines:
+        for tag in soup.find_all('a'):
+            text = tag.get_text(strip=True)
+            if text and ticker in text.upper():
+                headlines.append(text)
 
     return headlines
-
-# Test run
-if __name__ == "__main__":
-    ticker = "AAPL"
-    today = datetime.date.today()
-    past = today - datetime.timedelta(days=30)
-
-    print("✅ Downloading stock data...")
-    df = fetch_stock_data(ticker, past, today)
-    print(df.tail())
-
-    print("\n📰 Fetching recent headlines...")
-    news = fetch_news(ticker)
-    for i, headline in enumerate(news[:5]):
-        print(f"{i+1}. {headline}")
